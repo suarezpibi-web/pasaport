@@ -77,7 +77,7 @@ export default function Passport() {
       let prompt = `
         The user scanned a QR code or provided an ID: "${identifier}".
         
-        Task: Generate a realistic Product Passport JSON for this item.
+        Task: Analyze this product and provide its details in JSON format.
         
         The JSON must strictly match this TypeScript interface:
         interface Product {
@@ -114,13 +114,13 @@ export default function Passport() {
         prompt = `
           The user provided this URL: ${urlToAnalyze}
           
-          Task: Access this URL, analyze the product page content, and generate a Product Passport.
+          Task: Access this URL, analyze the product page content, and extract the product details.
           
           1. READ the content of the provided URL (${urlToAnalyze}) using the urlContext tool.
           2. If the URL is a redirect or short link, follow it to the final product page.
           3. Extract REAL data from the page: Name, Manufacturer, Category, Specs, Materials, Sustainability info.
           4. If specific sustainability data (carbon footprint, repairability) is missing on the page, ESTIMATE it based on the product type and industry standards, but prioritize real data found on the page or via Google Search.
-          5. Generate the JSON matching the interface.
+          5. Return the JSON matching the interface.
           
           ${prompt}
         `;
@@ -140,11 +140,11 @@ export default function Passport() {
         prompt = `
           Analyze this image of a product.
           
-          Task: Identify the product shown in the image (Name, Manufacturer, Model) and generate a detailed Product Passport JSON for it.
+          Task: Visually identify the product (Name, Manufacturer, Model) and determine its characteristics.
           
           1. Identify the product visually. If the exact model is not clear, infer the most likely model or a generic model for this type of product (e.g., "HP Laptop" instead of a specific serial number).
-          2. Estimate its specifications, materials, and sustainability metrics based on the identified product type.
-          3. Generate the JSON matching the interface provided below.
+          2. Determine its specifications, materials, and sustainability metrics based on the identified product type.
+          3. Return the JSON matching the interface provided below.
           
           IMPORTANT: Do NOT return an error if you cannot identify the exact serial number. Provide the best possible identification based on visual appearance.
           
@@ -193,7 +193,7 @@ export default function Passport() {
         prompt = `
           First, use Google Search to identify the product with this ID/Barcode/Name: "${identifier}"
           
-          Then, based on the search results, generate the Product Passport JSON.
+          Then, based on the search results, extract the product details in JSON format.
           
           ${prompt}
         `;
@@ -282,8 +282,8 @@ export default function Passport() {
           {isUrl 
             ? "Estem llegint el contingut de l'enllaç i analitzant les especificacions tècniques amb IA avançada."
             : isImage
-            ? "Estem analitzant la foto del producte per identificar-lo i generar el seu passaport digital."
-            : "Estem cercant informació d'aquest producte a internet per generar el seu passaport digital."}
+            ? "Estem analitzant la foto per identificar el producte i extreure'n les dades."
+            : "Estem cercant informació d'aquest producte a internet per obtenir-ne els detalls."}
         </p>
         <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">
           <Loader2 size={16} className="animate-spin" />
@@ -300,7 +300,7 @@ export default function Passport() {
           <Recycle size={32} />
         </div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">Producte no trobat</h2>
-        <p className="text-gray-500 mb-6 max-w-xs mx-auto">No hem pogut generar el passaport digital. Potser la imatge no és clara o el producte no és reconeixible.</p>
+        <p className="text-gray-500 mb-6 max-w-xs mx-auto">No hem pogut identificar el producte. Potser la imatge no és clara o el producte no és reconeixible.</p>
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <button 
             onClick={() => generateProduct(id)}
@@ -505,7 +505,7 @@ export default function Passport() {
             </div>
             <div>
               <h3 className="font-bold text-lg">Etiqueta per a Futurs Usuaris</h3>
-              <p className="text-emerald-200 text-sm">Genera un codi QR perquè altres persones puguin escanejar i accedir a aquest passaport.</p>
+              <p className="text-emerald-200 text-sm">Genera un codi QR perquè altres persones puguin escanejar i accedir a aquesta fitxa.</p>
             </div>
             <button 
               onClick={() => setShowQR(true)}
@@ -543,7 +543,7 @@ export default function Passport() {
               </button>
               
               <h3 className="text-xl font-bold text-gray-900 mb-2">{product.name}</h3>
-              <p className="text-gray-500 text-sm mb-6">Escaneja aquest codi per accedir al passaport digital</p>
+              <p className="text-gray-500 text-sm mb-6">Escaneja aquest codi per accedir a la informació del producte</p>
               
               <div className="bg-white p-4 rounded-xl border-2 border-emerald-100 inline-block">
                 <QRCode value={product.id} size={200} />
