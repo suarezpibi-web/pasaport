@@ -1,18 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Recycle, Wrench, Leaf, Factory, Calendar, Share2, QrCode, X, Cpu, ThumbsUp } from 'lucide-react';
+import { ArrowLeft, Recycle, Wrench, Leaf, Factory, Calendar, Share2, QrCode, X, Cpu, ThumbsUp, Loader2, Sparkles } from 'lucide-react';
 import { products, Product } from '../data/products';
 import AIAssistant from '../components/AIAssistant';
 import { motion, AnimatePresence } from 'motion/react';
 import QRCode from 'react-qr-code';
+import { GoogleGenAI } from "@google/genai";
 
 export default function Passport() {
-  const { id } = useParams();
+  const { id: paramId } = useParams();
+  const id = decodeURIComponent(paramId || '');
   const navigate = useNavigate();
   const [showQR, setShowQR] = useState(false);
   const [product, setProduct] = useState<Product | undefined>(undefined);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState(false);
 
   useEffect(() => {
+    if (!id) return;
+
     // 1. Try static products
     let found = products.find(p => p.id === id);
     
@@ -22,27 +28,122 @@ export default function Passport() {
       found = dynamicProducts.find((p: Product) => p.id === id);
     }
 
-    setProduct(found);
-
-    // 3. Update history if found
     if (found) {
-      const history = JSON.parse(localStorage.getItem('scanHistory') || '[]');
-      const newEntry = {
-        id: found.id,
-        name: found.name,
-        manufacturer: found.manufacturer,
-        category: found.category,
-        timestamp: Date.now()
-      };
-      
-      const filteredHistory = history.filter((h: any) => h.id !== found!.id);
-      const newHistory = [newEntry, ...filteredHistory].slice(0, 10);
-      
-      localStorage.setItem('scanHistory', JSON.stringify(newHistory));
+      setProduct(found);
+      addToHistory(found);
+    } else {
+      // 3. Not found locally, generate with AI
+      generateProduct(id);
     }
   }, [id]);
 
-  if (!product) {
+  const addToHistory = (prod: Product) => {
+    const history = JSON.parse(localStorage.getItem('scanHistory') || '[]');
+    const newEntry = {
+      id: prod.id,
+      name: prod.name,
+      manufacturer: prod.manufacturer,
+      category: prod.category,
+      timestamp: Date.now()
+    };
+    
+    const filteredHistory = history.filter((h: any) => h.id !== prod.id);
+    const newHistory = [newEntry, ...filteredHistory].slice(0, 10);
+    
+    localStorage.setItem('scanHistory', JSON.stringify(newHistory));
+  };
+
+  const generateProduct = async (identifier: string) => {
+    setIsGenerating(true);
+    setGenerationError(false);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const prompt = `
+        The user scanned a QR code or provided an ID: "${identifier}".
+        
+        This identifier might be:
+        1. A URL (e.g. https://manufacturer.com/product/...) -> Analyze the URL structure/text to infer the product.
+        2. A Serial Number or Model Name -> Generate a realistic product based on this.
+
+        Task: Generate a realistic Product Passport JSON for this item.
+        If it's a URL, pretend you visited the site and extracted the specs.
+        
+        The JSON must strictly match this TypeScript interface:
+        interface Product {
+          id: string; // Use the provided identifier (or the URL itself)
+          name: string;
+          manufacturer: string;
+          manufactureDate: string; // YYYY-MM-DD
+          category: string; // e.g. Electrònica, Mobiliari, Roba, etc.
+          materials: { name: string; percentage: number; recyclable: boolean }[];
+          repairabilityScore: number; // 1-10
+          carbonFootprint: string; // e.g. "45kg CO2e"
+          description: string;
+          imageUrl: string; // Use https://picsum.photos/seed/{seed}/400/400
+          maintenanceGuide: string;
+          technicalSpecs: string[]; // List of 4-6 key technical specifications
+          recommendation: {
+            score: number; // 1-10
+            text: string; // Recommendation text
+          };
+        }
+
+        Return ONLY the JSON object. No markdown.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      const newProduct = JSON.parse(response.text || "{}");
+      
+      if (newProduct.id) {
+        // Ensure ID matches what we looked for (or use the one provided if it's cleaner)
+        // If the AI generated a new ID, we might want to map the scanned ID to this new product
+        // But for simplicity, let's trust the AI or force the ID to match the scan if it's not a URL
+        // Actually, let's just save it.
+        
+        // If the identifier was a URL, the AI might have used it as ID.
+        
+        const currentDynamic = JSON.parse(localStorage.getItem('dynamicProducts') || '[]');
+        localStorage.setItem('dynamicProducts', JSON.stringify([...currentDynamic, newProduct]));
+        
+        setProduct(newProduct);
+        addToHistory(newProduct);
+      } else {
+        setGenerationError(true);
+      }
+    } catch (e) {
+      console.error("Generation failed", e);
+      setGenerationError(true);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  if (isGenerating) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center bg-gray-50">
+        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-4 animate-pulse">
+          <Sparkles size={32} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Analitzant Producte...</h2>
+        <p className="text-gray-500 max-w-xs mx-auto">
+          Estem consultant la base de dades global i analitzant l'enllaç del fabricant per generar el passaport digital.
+        </p>
+        <div className="mt-8 flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 px-4 py-2 rounded-full">
+          <Loader2 size={16} className="animate-spin" />
+          Processant dades amb IA
+        </div>
+      </div>
+    );
+  }
+
+  if (!product || generationError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-500 mb-4">

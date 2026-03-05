@@ -44,7 +44,7 @@ export default function Home() {
 
   const handleScan = (decodedText: string) => {
     setShowScanner(false);
-    navigate(`/passport/${decodedText}`);
+    navigate(`/passport/${encodeURIComponent(decodedText)}`);
   };
 
   const handleManualSubmit = async (e: FormEvent) => {
