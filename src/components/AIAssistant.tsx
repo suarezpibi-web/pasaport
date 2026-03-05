@@ -19,7 +19,7 @@ export default function AIAssistant({ product }: AIAssistantProps) {
     setResponse(null);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY });
       const model = "gemini-3-flash-preview"; // Using a fast model for quick responses
 
       const prompt = `

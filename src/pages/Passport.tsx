@@ -64,7 +64,7 @@ export default function Passport() {
     setIsGenerating(true);
     setGenerationError(false);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY });
       
       const isUrl = /^(http|https|www\.)/i.test(identifier.trim());
       const isImage = identifier.startsWith('img-');
