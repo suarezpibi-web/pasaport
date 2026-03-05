@@ -1,0 +1,5 @@
+{
+  "name": "Eco-Reboot: Passaport Digital",
+  "description": "Passaport digital de productes amb anàlisi IA i codis QR",
+  "requestFramePermissions": ["camera"]
+}

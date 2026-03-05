@@ -1,0 +1,299 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Recycle, Wrench, Leaf, Factory, Calendar, Share2, QrCode, X, Cpu, ThumbsUp } from 'lucide-react';
+import { products, Product } from '../data/products';
+import AIAssistant from '../components/AIAssistant';
+import { motion, AnimatePresence } from 'motion/react';
+import QRCode from 'react-qr-code';
+
+export default function Passport() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [showQR, setShowQR] = useState(false);
+  const [product, setProduct] = useState<Product | undefined>(undefined);
+
+  useEffect(() => {
+    // 1. Try static products
+    let found = products.find(p => p.id === id);
+    
+    // 2. Try dynamic products (localStorage)
+    if (!found) {
+      const dynamicProducts = JSON.parse(localStorage.getItem('dynamicProducts') || '[]');
+      found = dynamicProducts.find((p: Product) => p.id === id);
+    }
+
+    setProduct(found);
+
+    // 3. Update history if found
+    if (found) {
+      const history = JSON.parse(localStorage.getItem('scanHistory') || '[]');
+      const newEntry = {
+        id: found.id,
+        name: found.name,
+        manufacturer: found.manufacturer,
+        category: found.category,
+        timestamp: Date.now()
+      };
+      
+      const filteredHistory = history.filter((h: any) => h.id !== found!.id);
+      const newHistory = [newEntry, ...filteredHistory].slice(0, 10);
+      
+      localStorage.setItem('scanHistory', JSON.stringify(newHistory));
+    }
+  }, [id]);
+
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center text-red-500 mb-4">
+          <Recycle size={32} />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Producte no trobat</h2>
+        <p className="text-gray-500 mb-6">No hem pogut trobar cap passaport digital amb l'ID "{id}".</p>
+        <button 
+          onClick={() => navigate('/')}
+          className="px-6 py-2 bg-gray-900 text-white rounded-full hover:bg-gray-800 transition-colors"
+        >
+          Tornar a l'inici
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="pb-20"
+    >
+      {/* Header Image */}
+      <div className="relative h-64 bg-gray-100">
+        <img 
+          src={product.imageUrl} 
+          alt={product.name} 
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+        <button 
+          onClick={() => navigate('/')}
+          className="absolute top-4 left-4 p-2 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <div className="absolute top-4 right-4 flex gap-2">
+          <button 
+            onClick={() => setShowQR(true)}
+            className="p-2 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors"
+          >
+            <QrCode size={20} />
+          </button>
+          <button 
+            className="p-2 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors"
+          >
+            <Share2 size={20} />
+          </button>
+        </div>
+        <div className="absolute bottom-4 left-4 text-white">
+          <span className="px-2 py-1 bg-emerald-500/80 backdrop-blur-sm rounded-md text-xs font-medium uppercase tracking-wider mb-2 inline-block">
+            {product.category}
+          </span>
+          <h1 className="text-2xl font-bold">{product.name}</h1>
+        </div>
+      </div>
+
+      <div className="px-4 -mt-6 relative z-10">
+        <div className="bg-white rounded-3xl shadow-lg p-6 space-y-8">
+          
+          {/* Key Metrics */}
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="space-y-1">
+              <div className="w-10 h-10 mx-auto bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
+                <Wrench size={18} />
+              </div>
+              <div className="text-lg font-bold text-gray-900">{product.repairabilityScore}/10</div>
+              <div className="text-[10px] uppercase tracking-wide text-gray-400">Reparabilitat</div>
+            </div>
+            <div className="space-y-1">
+              <div className="w-10 h-10 mx-auto bg-green-50 text-green-600 rounded-full flex items-center justify-center">
+                <Leaf size={18} />
+              </div>
+              <div className="text-lg font-bold text-gray-900">{product.carbonFootprint}</div>
+              <div className="text-[10px] uppercase tracking-wide text-gray-400">Petjada CO2</div>
+            </div>
+            <div className="space-y-1">
+              <div className="w-10 h-10 mx-auto bg-purple-50 text-purple-600 rounded-full flex items-center justify-center">
+                <Recycle size={18} />
+              </div>
+              <div className="text-lg font-bold text-gray-900">
+                {Math.round(product.materials.reduce((acc, m) => m.recyclable ? acc + m.percentage : acc, 0))}%
+              </div>
+              <div className="text-[10px] uppercase tracking-wide text-gray-400">Reciclable</div>
+            </div>
+          </div>
+
+          {/* AI Assistant Section */}
+          <AIAssistant product={product} />
+
+          {/* Recommendation Section */}
+          {product.recommendation && (
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                <ThumbsUp size={18} className="text-gray-400" />
+                Recomanació de Compra
+              </h3>
+              <div className={`p-5 rounded-2xl border ${product.recommendation.score >= 8 ? 'bg-emerald-50 border-emerald-100' : product.recommendation.score >= 5 ? 'bg-yellow-50 border-yellow-100' : 'bg-red-50 border-red-100'}`}>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className={`text-2xl font-bold ${product.recommendation.score >= 8 ? 'text-emerald-600' : product.recommendation.score >= 5 ? 'text-yellow-600' : 'text-red-600'}`}>
+                    {product.recommendation.score}/10
+                  </div>
+                  <div className={`text-sm font-medium px-2 py-1 rounded-full ${product.recommendation.score >= 8 ? 'bg-emerald-100 text-emerald-700' : product.recommendation.score >= 5 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                    {product.recommendation.score >= 9 ? 'Molt Recomanable' : product.recommendation.score >= 7 ? 'Recomanable' : 'Poc Recomanable'}
+                  </div>
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {product.recommendation.text}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Technical Specs */}
+          {product.technicalSpecs && product.technicalSpecs.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                <Cpu size={18} className="text-gray-400" />
+                Característiques Tècniques
+              </h3>
+              <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+                {product.technicalSpecs.map((spec, idx) => (
+                  <div key={idx} className="px-4 py-3 border-b border-gray-50 last:border-0 text-sm text-gray-600 flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0"></span>
+                    {spec}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Product Details */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Factory size={18} className="text-gray-400" />
+              Origen i Fabricació
+            </h3>
+            <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Fabricant</span>
+                <span className="font-medium text-gray-900">{product.manufacturer}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Data Fabricació</span>
+                <span className="font-medium text-gray-900 flex items-center gap-1">
+                  <Calendar size={14} />
+                  {product.manufactureDate}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Núm. Sèrie</span>
+                <span className="font-mono text-gray-900">{product.id}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Materials */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Recycle size={18} className="text-gray-400" />
+              Composició de Materials
+            </h3>
+            <div className="space-y-3">
+              {product.materials.map((material, idx) => (
+                <div key={idx} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">{material.name}</span>
+                    <span className="font-medium text-gray-900">{material.percentage}%</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full ${material.recyclable ? 'bg-emerald-400' : 'bg-orange-400'}`} 
+                      style={{ width: `${material.percentage}%` }}
+                    ></div>
+                  </div>
+                  {!material.recyclable && (
+                    <p className="text-[10px] text-orange-500">No reciclable - consultar punt verd</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Maintenance */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Wrench size={18} className="text-gray-400" />
+              Guia de Manteniment
+            </h3>
+            <p className="text-sm text-gray-600 leading-relaxed bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+              {product.maintenanceGuide}
+            </p>
+          </div>
+
+          {/* Digital Label Section */}
+          <div className="bg-emerald-900 rounded-2xl p-6 text-white text-center space-y-4">
+            <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-2">
+              <QrCode size={32} />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg">Etiqueta per a Futurs Usuaris</h3>
+              <p className="text-emerald-200 text-sm">Genera un codi QR perquè altres persones puguin escanejar i accedir a aquest passaport.</p>
+            </div>
+            <button 
+              onClick={() => setShowQR(true)}
+              className="w-full py-3 bg-white text-emerald-900 rounded-xl font-semibold hover:bg-emerald-50 transition-colors"
+            >
+              Generar Etiqueta QR
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      {/* QR Code Modal */}
+      <AnimatePresence>
+        {showQR && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setShowQR(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white p-8 rounded-3xl max-w-sm w-full text-center relative"
+              onClick={e => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setShowQR(false)}
+                className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+              >
+                <X size={20} />
+              </button>
+              
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{product.name}</h3>
+              <p className="text-gray-500 text-sm mb-6">Escaneja aquest codi per accedir al passaport digital</p>
+              
+              <div className="bg-white p-4 rounded-xl border-2 border-emerald-100 inline-block">
+                <QRCode value={product.id} size={200} />
+              </div>
+              
+              <p className="mt-6 font-mono text-xs text-gray-400">{product.id}</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
