@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Recycle, Wrench, Leaf, Factory, Calendar, Share2, QrCode, X, Cpu, ThumbsUp, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Recycle, Wrench, Leaf, Factory, Calendar, Share2, QrCode, X, Cpu, ThumbsUp, Loader2, Sparkles, RefreshCw } from 'lucide-react';
 import { products, Product } from '../data/products';
 import AIAssistant from '../components/AIAssistant';
 import { motion, AnimatePresence } from 'motion/react';
@@ -256,22 +256,36 @@ export default function Passport() {
   if (isGenerating) {
     const isUrl = /^(http|https|www\.)/i.test(id.trim());
     const isImage = id.startsWith('img-');
+    let previewImage = null;
+    
+    if (isImage) {
+      const storageKey = `captured_image_${id}`;
+      previewImage = localStorage.getItem(storageKey);
+    }
+
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center bg-gray-50">
-        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-4 animate-pulse">
-          <Sparkles size={32} />
-        </div>
+        {previewImage ? (
+          <div className="w-32 h-32 mb-6 rounded-2xl overflow-hidden border-4 border-white shadow-lg relative">
+            <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-emerald-500/20 animate-pulse"></div>
+          </div>
+        ) : (
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-4 animate-pulse">
+            <Sparkles size={32} />
+          </div>
+        )}
         <h2 className="text-xl font-bold text-gray-900 mb-2">
           {isUrl ? "Analitzant Enllaç..." : isImage ? "Analitzant Imatge..." : "Cercant a la Web..."}
         </h2>
-        <p className="text-gray-500 max-w-xs mx-auto">
+        <p className="text-gray-500 max-w-xs mx-auto mb-8">
           {isUrl 
             ? "Estem llegint el contingut de l'enllaç i analitzant les especificacions tècniques amb IA avançada."
             : isImage
             ? "Estem analitzant la foto del producte per identificar-lo i generar el seu passaport digital."
             : "Estem cercant informació d'aquest producte a internet per generar el seu passaport digital."}
         </p>
-        <div className="mt-8 flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 px-4 py-2 rounded-full">
+        <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">
           <Loader2 size={16} className="animate-spin" />
           Processant dades amb IA
         </div>
@@ -286,13 +300,22 @@ export default function Passport() {
           <Recycle size={32} />
         </div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">Producte no trobat</h2>
-        <p className="text-gray-500 mb-6">No hem pogut trobar cap passaport digital amb l'ID "{id}".</p>
-        <button 
-          onClick={() => navigate('/')}
-          className="px-6 py-2 bg-gray-900 text-white rounded-full hover:bg-gray-800 transition-colors"
-        >
-          Tornar a l'inici
-        </button>
+        <p className="text-gray-500 mb-6 max-w-xs mx-auto">No hem pogut generar el passaport digital. Potser la imatge no és clara o el producte no és reconeixible.</p>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <button 
+            onClick={() => generateProduct(id)}
+            className="px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium flex items-center justify-center gap-2"
+          >
+            <RefreshCw size={18} />
+            Tornar-ho a provar
+          </button>
+          <button 
+            onClick={() => navigate('/')}
+            className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+          >
+            Tornar a l'inici
+          </button>
+        </div>
       </div>
     );
   }
