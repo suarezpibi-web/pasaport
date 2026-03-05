@@ -116,8 +116,8 @@ export default function Home() {
         setSearchResults(results);
         setHasSearched(true);
       } else {
-        // 3. If no local match, generate a new product with AI
-        await generateAndRedirect(nameQuery, serialQuery);
+        // 3. If no local match, navigate to Passport page to let it generate/search web
+        navigate(`/passport/${encodeURIComponent(nameQuery || serialQuery)}`);
       }
 
     } catch (error) {
@@ -132,70 +132,11 @@ export default function Home() {
         setSearchResults(fallbackResults);
         setHasSearched(true);
       } else {
-        // Even fallback failed, try to generate
-        await generateAndRedirect(nameQuery, serialQuery);
+        // Even fallback failed, navigate to Passport page
+        navigate(`/passport/${encodeURIComponent(nameQuery || serialQuery)}`);
       }
     } finally {
       setIsSearching(false);
-    }
-  };
-
-  const generateAndRedirect = async (name: string, serial: string) => {
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const prompt = `
-        Generate a realistic product passport JSON for a product with:
-        Name/Model: "${name}"
-        Serial Number: "${serial || 'UNKNOWN-' + Math.floor(Math.random()*10000)}"
-
-        The JSON must strictly match this TypeScript interface:
-        interface Product {
-          id: string; // Use the provided serial number or generate a realistic one
-          name: string;
-          manufacturer: string;
-          manufactureDate: string; // YYYY-MM-DD
-          category: string; // e.g. Electrònica, Mobiliari, Roba, etc.
-          materials: { name: string; percentage: number; recyclable: boolean }[];
-          repairabilityScore: number; // 1-10
-          carbonFootprint: string; // e.g. "45kg CO2e"
-          description: string;
-          imageUrl: string; // Use https://picsum.photos/seed/{seed}/400/400
-          maintenanceGuide: string;
-          technicalSpecs: string[]; // List of 4-6 key technical specifications
-          recommendation: {
-            score: number; // 1-10, how recommended it is to buy
-            text: string; // A short paragraph explaining why it is or isn't recommended based on sustainability and specs
-          };
-        }
-
-        Return ONLY the JSON object. No markdown formatting.
-      `;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
-      });
-
-      const newProduct = JSON.parse(response.text || "{}");
-      
-      if (newProduct.id) {
-        // Save to dynamic storage
-        const currentDynamic = JSON.parse(localStorage.getItem('dynamicProducts') || '[]');
-        localStorage.setItem('dynamicProducts', JSON.stringify([...currentDynamic, newProduct]));
-        
-        // Navigate immediately
-        navigate(`/passport/${newProduct.id}`);
-      } else {
-        setSearchResults([]);
-        setHasSearched(true);
-      }
-    } catch (e) {
-      console.error("Generation failed", e);
-      setSearchResults([]);
-      setHasSearched(true);
     }
   };
 

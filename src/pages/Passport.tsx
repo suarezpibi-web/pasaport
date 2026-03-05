@@ -161,12 +161,12 @@ export default function Passport() {
           <Sparkles size={32} />
         </div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">
-          {isUrl ? "Analitzant Enllaç..." : "Analitzant Producte..."}
+          {isUrl ? "Analitzant Enllaç..." : "Cercant a la Web..."}
         </h2>
         <p className="text-gray-500 max-w-xs mx-auto">
           {isUrl 
             ? "Estem accedint a la pàgina del fabricant per extreure'n les dades i generar el passaport."
-            : "Estem consultant la base de dades global i cercant informació per generar el passaport digital."}
+            : "Estem cercant informació d'aquest producte a internet per generar el seu passaport digital."}
         </p>
         <div className="mt-8 flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 px-4 py-2 rounded-full">
           <Loader2 size={16} className="animate-spin" />
