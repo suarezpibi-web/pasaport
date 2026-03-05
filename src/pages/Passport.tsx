@@ -60,6 +60,10 @@ export default function Passport() {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
       const isUrl = /^(http|https|www\.)/i.test(identifier.trim());
+      let urlToAnalyze = identifier.trim();
+      if (isUrl && !/^https?:\/\//i.test(urlToAnalyze)) {
+        urlToAnalyze = 'https://' + urlToAnalyze;
+      }
       
       let prompt = `
         The user scanned a QR code or provided an ID: "${identifier}".
@@ -94,17 +98,18 @@ export default function Passport() {
       };
 
       if (isUrl) {
-        // Use Google Search to analyze the URL content
-        config.tools = [{ googleSearch: {} }];
+        // Use URL Context + Google Search to analyze the URL content
+        config.tools = [{ googleSearch: {} }, { urlContext: {} }];
         prompt = `
-          The user scanned a QR code containing this URL: "${identifier}".
+          The user provided this URL: ${urlToAnalyze}
           
-          Task: Analyze the product at this URL and generate a Product Passport.
+          Task: Access this URL, analyze the product page content, and generate a Product Passport.
           
-          1. Use Google Search to find the content of this URL.
-          2. If the URL is a redirect or short link, find the final product page.
-          3. Extract: Name, Manufacturer, Category, Specs, Materials, Sustainability info.
-          4. Generate the JSON matching the interface.
+          1. READ the content of the provided URL (${urlToAnalyze}) using the urlContext tool.
+          2. If the URL is a redirect or short link, follow it to the final product page.
+          3. Extract REAL data from the page: Name, Manufacturer, Category, Specs, Materials, Sustainability info.
+          4. If specific sustainability data (carbon footprint, repairability) is missing on the page, ESTIMATE it based on the product type and industry standards, but prioritize real data found on the page or via Google Search.
+          5. Generate the JSON matching the interface.
           
           ${prompt}
         `;
@@ -122,7 +127,7 @@ export default function Passport() {
       }
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-pro-preview",
         contents: prompt,
         config: config
       });
@@ -165,7 +170,7 @@ export default function Passport() {
         </h2>
         <p className="text-gray-500 max-w-xs mx-auto">
           {isUrl 
-            ? "Estem accedint a la pàgina del fabricant per extreure'n les dades i generar el passaport."
+            ? "Estem llegint el contingut de l'enllaç i analitzant les especificacions tècniques amb IA avançada."
             : "Estem cercant informació d'aquest producte a internet per generar el seu passaport digital."}
         </p>
         <div className="mt-8 flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 px-4 py-2 rounded-full">
