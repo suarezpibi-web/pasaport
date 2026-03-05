@@ -55,8 +55,10 @@ export default function Home() {
     if (!nameQuery && !serialQuery) return;
 
     // Check if input is a URL
-    if (nameQuery.startsWith('http://') || nameQuery.startsWith('https://')) {
-      navigate(`/passport/${encodeURIComponent(nameQuery)}`);
+    if (nameQuery.startsWith('http://') || nameQuery.startsWith('https://') || nameQuery.startsWith('www.')) {
+      let url = nameQuery;
+      if (nameQuery.startsWith('www.')) url = 'https://' + nameQuery;
+      navigate(`/passport/${encodeURIComponent(url)}`);
       return;
     }
 

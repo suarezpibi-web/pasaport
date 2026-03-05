@@ -59,7 +59,7 @@ export default function Passport() {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
-      const isUrl = identifier.startsWith('http');
+      const isUrl = /^(http|https|www\.)/i.test(identifier.trim());
       
       let prompt = `
         The user scanned a QR code or provided an ID: "${identifier}".
@@ -97,10 +97,14 @@ export default function Passport() {
         // Use Google Search to analyze the URL content
         config.tools = [{ googleSearch: {} }];
         prompt = `
-          First, use Google Search to find details about the product at this URL: ${identifier}
-          Look for product name, manufacturer, specs, materials, and sustainability info.
+          The user scanned a QR code containing this URL: "${identifier}".
           
-          Then, based on the search results, generate the Product Passport JSON.
+          Task: Analyze the product at this URL and generate a Product Passport.
+          
+          1. Use Google Search to find the content of this URL.
+          2. If the URL is a redirect or short link, find the final product page.
+          3. Extract: Name, Manufacturer, Category, Specs, Materials, Sustainability info.
+          4. Generate the JSON matching the interface.
           
           ${prompt}
         `;
@@ -150,14 +154,19 @@ export default function Passport() {
   };
 
   if (isGenerating) {
+    const isUrl = /^(http|https|www\.)/i.test(id.trim());
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center bg-gray-50">
         <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-4 animate-pulse">
           <Sparkles size={32} />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Analitzant Producte...</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
+          {isUrl ? "Analitzant Enllaç..." : "Analitzant Producte..."}
+        </h2>
         <p className="text-gray-500 max-w-xs mx-auto">
-          Estem consultant la base de dades global i analitzant l'enllaç del fabricant per generar el passaport digital.
+          {isUrl 
+            ? "Estem accedint a la pàgina del fabricant per extreure'n les dades i generar el passaport."
+            : "Estem consultant la base de dades global i cercant informació per generar el passaport digital."}
         </p>
         <div className="mt-8 flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 px-4 py-2 rounded-full">
           <Loader2 size={16} className="animate-spin" />
