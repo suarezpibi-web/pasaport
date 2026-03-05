@@ -94,7 +94,7 @@ export default function Passport() {
       `;
 
       const config: any = {
-        responseMimeType: "application/json"
+        // responseMimeType: "application/json" // Removed to avoid conflicts with tools
       };
 
       if (isUrl) {
@@ -126,13 +126,29 @@ export default function Passport() {
         `;
       }
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
-        contents: prompt,
-        config: config
-      });
+      let textResponse = "";
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-pro-preview",
+          contents: prompt,
+          config: config
+        });
+        textResponse = response.text || "";
+      } catch (primaryError) {
+        console.warn("Primary generation failed, retrying with fallback model...", primaryError);
+        // Fallback to Flash model if Pro fails
+        const fallbackResponse = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: prompt,
+          config: config
+        });
+        textResponse = fallbackResponse.text || "";
+      }
 
-      const newProduct = JSON.parse(response.text || "{}");
+      // Clean up the response to extract JSON
+      const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+      const jsonString = jsonMatch ? jsonMatch[0] : "{}";
+      const newProduct = JSON.parse(jsonString);
       
       if (newProduct.id) {
         // Ensure ID matches what we looked for (or use the one provided if it's cleaner)
