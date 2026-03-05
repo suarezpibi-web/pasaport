@@ -19,20 +19,27 @@ export default function Passport() {
   useEffect(() => {
     if (!id) return;
 
-    // 1. Try static products
-    let found = products.find(p => p.id === id);
+    const isImage = id.startsWith('img-');
+    const isUrl = /^(http|https|www\.)/i.test(id);
+
+    // 1. Try static products (skip if it's an image or URL that needs analysis)
+    let found = undefined;
     
-    // 2. Try dynamic products (localStorage)
-    if (!found) {
-      const dynamicProducts = JSON.parse(localStorage.getItem('dynamicProducts') || '[]');
-      found = dynamicProducts.find((p: Product) => p.id === id);
+    if (!isImage && !isUrl) {
+      found = products.find(p => p.id === id);
+      
+      // 2. Try dynamic products (localStorage)
+      if (!found) {
+        const dynamicProducts = JSON.parse(localStorage.getItem('dynamicProducts') || '[]');
+        found = dynamicProducts.find((p: Product) => p.id === id);
+      }
     }
 
     if (found) {
       setProduct(found);
       addToHistory(found);
     } else {
-      // 3. Not found locally, generate with AI
+      // 3. Not found locally, or forced analysis (Image/URL), generate with AI
       generateProduct(id);
     }
   }, [id]);
@@ -135,9 +142,11 @@ export default function Passport() {
           
           Task: Identify the product shown in the image (Name, Manufacturer, Model) and generate a detailed Product Passport JSON for it.
           
-          1. Identify the product visually.
+          1. Identify the product visually. If the exact model is not clear, infer the most likely model or a generic model for this type of product (e.g., "HP Laptop" instead of a specific serial number).
           2. Estimate its specifications, materials, and sustainability metrics based on the identified product type.
           3. Generate the JSON matching the interface provided below.
+          
+          IMPORTANT: Do NOT return an error if you cannot identify the exact serial number. Provide the best possible identification based on visual appearance.
           
           The JSON must strictly match this TypeScript interface:
           interface Product {
