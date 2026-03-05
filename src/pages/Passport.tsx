@@ -97,9 +97,21 @@ export default function Passport() {
         // Use Google Search to analyze the URL content
         config.tools = [{ googleSearch: {} }];
         prompt = `
-          Analyze the product page at this URL: ${identifier}
+          First, use Google Search to find details about the product at this URL: ${identifier}
+          Look for product name, manufacturer, specs, materials, and sustainability info.
           
-          Use Google Search to find details about this specific product URL and extract technical specifications, materials, and sustainability info.
+          Then, based on the search results, generate the Product Passport JSON.
+          
+          ${prompt}
+        `;
+      } else {
+        // If it's not a URL, it might be a barcode (UPC/EAN) or a model name
+        // Use Google Search to find the product by this identifier
+        config.tools = [{ googleSearch: {} }];
+        prompt = `
+          First, use Google Search to identify the product with this ID/Barcode/Name: "${identifier}"
+          
+          Then, based on the search results, generate the Product Passport JSON.
           
           ${prompt}
         `;

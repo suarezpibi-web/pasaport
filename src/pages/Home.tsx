@@ -54,6 +54,12 @@ export default function Home() {
 
     if (!nameQuery && !serialQuery) return;
 
+    // Check if input is a URL
+    if (nameQuery.startsWith('http://') || nameQuery.startsWith('https://')) {
+      navigate(`/passport/${encodeURIComponent(nameQuery)}`);
+      return;
+    }
+
     setIsSearching(true);
     setSearchResults([]);
     setHasSearched(false);
@@ -241,7 +247,7 @@ export default function Home() {
           <div className="relative">
             <input
               type="text"
-              placeholder="Model o Marca (ex: EcoPhone)"
+              placeholder="Model, Marca o URL (ex: https://...)"
               value={searchName}
               onChange={(e) => setSearchName(e.target.value)}
               className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm"
