@@ -60,6 +60,8 @@ export default function Passport() {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
       const isUrl = /^(http|https|www\.)/i.test(identifier.trim());
+      const isImage = identifier.startsWith('img-');
+      
       let urlToAnalyze = identifier.trim();
       if (isUrl && !/^https?:\/\//i.test(urlToAnalyze)) {
         urlToAnalyze = 'https://' + urlToAnalyze;
@@ -97,6 +99,8 @@ export default function Passport() {
         // responseMimeType: "application/json" // Removed to avoid conflicts with tools
       };
 
+      let contents: any = prompt;
+
       if (isUrl) {
         // Use URL Context + Google Search to analyze the URL content
         config.tools = [{ googleSearch: {} }, { urlContext: {} }];
@@ -113,6 +117,66 @@ export default function Passport() {
           
           ${prompt}
         `;
+        contents = prompt;
+      } else if (isImage) {
+        // Handle Image Analysis
+        const storageKey = `captured_image_${identifier}`;
+        const base64Image = localStorage.getItem(storageKey);
+        
+        if (!base64Image) {
+          throw new Error("Image data not found");
+        }
+
+        // Clean up base64 string if it has prefix
+        const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
+
+        prompt = `
+          Analyze this image of a product.
+          
+          Task: Identify the product shown in the image (Name, Manufacturer, Model) and generate a detailed Product Passport JSON for it.
+          
+          1. Identify the product visually.
+          2. Estimate its specifications, materials, and sustainability metrics based on the identified product type.
+          3. Generate the JSON matching the interface provided below.
+          
+          The JSON must strictly match this TypeScript interface:
+          interface Product {
+            id: string; // Use "${identifier}" as the ID
+            name: string;
+            manufacturer: string;
+            manufactureDate: string; // YYYY-MM-DD
+            category: string; // e.g. Electrònica, Mobiliari, Roba, etc.
+            materials: { name: string; percentage: number; recyclable: boolean }[];
+            repairabilityScore: number; // 1-10
+            carbonFootprint: string; // e.g. "45kg CO2e"
+            description: string;
+            imageUrl: string; // Use the image provided if possible, otherwise https://picsum.photos/seed/${identifier}/400/400
+            maintenanceGuide: string;
+            technicalSpecs: string[]; // List of 4-6 key technical specifications
+            recommendation: {
+              score: number; // 1-10
+              text: string; // Recommendation text
+            };
+          }
+
+          Return ONLY the JSON object. No markdown.
+        `;
+
+        contents = {
+          parts: [
+            {
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: cleanBase64
+              }
+            },
+            { text: prompt }
+          ]
+        };
+        
+        // We can also use Google Search to help with identification if needed, 
+        // but let's start with pure vision to avoid tool conflicts with image input in some models
+        // config.tools = [{ googleSearch: {} }]; 
       } else {
         // If it's not a URL, it might be a barcode (UPC/EAN) or a model name
         // Use Google Search to find the product by this identifier
@@ -124,13 +188,14 @@ export default function Passport() {
           
           ${prompt}
         `;
+        contents = prompt;
       }
 
       let textResponse = "";
       try {
         const response = await ai.models.generateContent({
           model: "gemini-3.1-pro-preview",
-          contents: prompt,
+          contents: contents,
           config: config
         });
         textResponse = response.text || "";
@@ -139,7 +204,7 @@ export default function Passport() {
         // Fallback to Flash model if Pro fails
         const fallbackResponse = await ai.models.generateContent({
           model: "gemini-3-flash-preview",
-          contents: prompt,
+          contents: contents,
           config: config
         });
         textResponse = fallbackResponse.text || "";
@@ -161,6 +226,11 @@ export default function Passport() {
         const currentDynamic = JSON.parse(localStorage.getItem('dynamicProducts') || '[]');
         localStorage.setItem('dynamicProducts', JSON.stringify([...currentDynamic, newProduct]));
         
+        // Clean up image data if it was an image scan to save space
+        if (identifier.startsWith('img-')) {
+          localStorage.removeItem(`captured_image_${identifier}`);
+        }
+        
         setProduct(newProduct);
         addToHistory(newProduct);
       } else {
@@ -176,17 +246,20 @@ export default function Passport() {
 
   if (isGenerating) {
     const isUrl = /^(http|https|www\.)/i.test(id.trim());
+    const isImage = id.startsWith('img-');
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center bg-gray-50">
         <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-4 animate-pulse">
           <Sparkles size={32} />
         </div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">
-          {isUrl ? "Analitzant Enllaç..." : "Cercant a la Web..."}
+          {isUrl ? "Analitzant Enllaç..." : isImage ? "Analitzant Imatge..." : "Cercant a la Web..."}
         </h2>
         <p className="text-gray-500 max-w-xs mx-auto">
           {isUrl 
             ? "Estem llegint el contingut de l'enllaç i analitzant les especificacions tècniques amb IA avançada."
+            : isImage
+            ? "Estem analitzant la foto del producte per identificar-lo i generar el seu passaport digital."
             : "Estem cercant informació d'aquest producte a internet per generar el seu passaport digital."}
         </p>
         <div className="mt-8 flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 px-4 py-2 rounded-full">

@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { QrCode, Search, Smartphone, Armchair, Shirt, Clock, Trash2, History, X, Sparkles, Loader2 } from 'lucide-react';
+import { Camera, Search, Smartphone, Armchair, Shirt, Clock, Trash2, History, X, Sparkles, Loader2 } from 'lucide-react';
 import QRScanner from '../components/QRScanner';
 import { products, Product } from '../data/products';
 import { GoogleGenAI } from "@google/genai";
@@ -44,7 +44,23 @@ export default function Home() {
 
   const handleScan = (decodedText: string) => {
     setShowScanner(false);
-    navigate(`/passport/${encodeURIComponent(decodedText)}`);
+    
+    if (decodedText.startsWith('image:')) {
+      // Handle image capture
+      const imageData = decodedText.substring(6); // Remove 'image:' prefix
+      const imageId = `img-${Date.now()}`;
+      
+      try {
+        localStorage.setItem(`captured_image_${imageId}`, imageData);
+        navigate(`/passport/${imageId}`);
+      } catch (e) {
+        console.error("Failed to save image", e);
+        alert("No s'ha pogut desar la imatge. Potser és massa gran.");
+      }
+    } else {
+      // Handle normal QR/Barcode scan
+      navigate(`/passport/${encodeURIComponent(decodedText)}`);
+    }
   };
 
   const handleManualSubmit = async (e: FormEvent) => {
@@ -171,12 +187,12 @@ export default function Home() {
             onClick={() => setShowScanner(true)}
             className="w-24 h-24 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600 hover:bg-emerald-200 hover:scale-105 transition-all shadow-inner"
           >
-            <QrCode size={40} />
+            <Camera size={40} />
           </button>
           
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-800">Escanejar Codi QR</h2>
-            <p className="text-sm text-gray-500 mt-1">Apunta la càmera al codi del producte</p>
+            <h2 className="text-xl font-semibold text-gray-800">Escanejar Producte</h2>
+            <p className="text-sm text-gray-500 mt-1">Fes una foto al producte</p>
           </div>
         </div>
 
