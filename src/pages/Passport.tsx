@@ -58,19 +58,17 @@ export default function Passport() {
     setGenerationError(false);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const prompt = `
+      
+      const isUrl = identifier.startsWith('http');
+      
+      let prompt = `
         The user scanned a QR code or provided an ID: "${identifier}".
         
-        This identifier might be:
-        1. A URL (e.g. https://manufacturer.com/product/...) -> Analyze the URL structure/text to infer the product.
-        2. A Serial Number or Model Name -> Generate a realistic product based on this.
-
         Task: Generate a realistic Product Passport JSON for this item.
-        If it's a URL, pretend you visited the site and extracted the specs.
         
         The JSON must strictly match this TypeScript interface:
         interface Product {
-          id: string; // Use the provided identifier (or the URL itself)
+          id: string; // Use the provided identifier
           name: string;
           manufacturer: string;
           manufactureDate: string; // YYYY-MM-DD
@@ -91,12 +89,26 @@ export default function Passport() {
         Return ONLY the JSON object. No markdown.
       `;
 
+      const config: any = {
+        responseMimeType: "application/json"
+      };
+
+      if (isUrl) {
+        // Use Google Search to analyze the URL content
+        config.tools = [{ googleSearch: {} }];
+        prompt = `
+          Analyze the product page at this URL: ${identifier}
+          
+          Use Google Search to find details about this specific product URL and extract technical specifications, materials, and sustainability info.
+          
+          ${prompt}
+        `;
+      }
+
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
+        config: config
       });
 
       const newProduct = JSON.parse(response.text || "{}");
