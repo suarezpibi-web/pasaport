@@ -100,6 +100,7 @@ export default function Home() {
 
   const handleManualSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    console.log("Manual submit triggered");
     const nameQuery = searchName.trim();
     const serialQuery = searchSerial.trim();
 
@@ -130,7 +131,14 @@ export default function Home() {
       }
 
       // 2. AI Semantic Search
-      const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+      
+      if (!apiKey) {
+        console.warn("No API key found, skipping AI search");
+        throw new Error("No API key available");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       
       // Create a lightweight index for the AI
       const productIndex = products.map(p => ({
