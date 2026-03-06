@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, Camera, RefreshCw } from 'lucide-react';
+import jsQR from 'jsqr';
 
 interface QRScannerProps {
   onScan: (decodedText: string) => void; // Keeping the prop name for compatibility, but it will return an image ID or data
@@ -10,9 +11,11 @@ interface QRScannerProps {
 export default function QRScanner({ onScan, onClose, onCapture }: QRScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const scanCanvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+  const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const startCamera = async () => {
     try {
@@ -42,8 +45,70 @@ export default function QRScanner({ onScan, onClose, onCapture }: QRScannerProps
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current);
+      }
     };
   }, [facingMode]);
+
+  // QR Scanning Loop
+  useEffect(() => {
+    if (!stream || !videoRef.current) return;
+
+    const scanQR = () => {
+      if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+        const video = videoRef.current;
+        const canvas = scanCanvasRef.current;
+        
+        if (canvas) {
+          const context = canvas.getContext('2d', { willReadFrequently: true });
+          if (context) {
+            // Limit scan resolution for performance
+            const maxScanDim = 640;
+            let scanWidth = video.videoWidth;
+            let scanHeight = video.videoHeight;
+            
+            if (scanWidth > maxScanDim || scanHeight > maxScanDim) {
+              if (scanWidth > scanHeight) {
+                scanHeight = (scanHeight / scanWidth) * maxScanDim;
+                scanWidth = maxScanDim;
+              } else {
+                scanWidth = (scanWidth / scanHeight) * maxScanDim;
+                scanHeight = maxScanDim;
+              }
+            }
+
+            canvas.width = scanWidth;
+            canvas.height = scanHeight;
+            context.drawImage(video, 0, 0, scanWidth, scanHeight);
+            
+            const imageData = context.getImageData(0, 0, scanWidth, scanHeight);
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: "dontInvert",
+            });
+
+            if (code) {
+              // Found a QR code!
+              if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+              
+              // Play a beep sound (optional, but good feedback)
+              // const audio = new Audio('/beep.mp3'); audio.play().catch(e => {});
+
+              onScan(code.data);
+            }
+          }
+        }
+      }
+    };
+
+    scanIntervalRef.current = setInterval(scanQR, 500); // Scan every 500ms
+
+    return () => {
+      if (scanIntervalRef.current) {
+        clearInterval(scanIntervalRef.current);
+      }
+    };
+  }, [stream, onScan]);
 
   const handleCapture = () => {
     if (videoRef.current && canvasRef.current) {
@@ -118,6 +183,7 @@ export default function QRScanner({ onScan, onClose, onCapture }: QRScannerProps
             />
           )}
           <canvas ref={canvasRef} className="hidden" />
+          <canvas ref={scanCanvasRef} className="hidden" />
           
           {/* Overlay guide */}
           <div className="absolute inset-0 border-2 border-white/30 pointer-events-none m-8 rounded-3xl">
@@ -125,6 +191,12 @@ export default function QRScanner({ onScan, onClose, onCapture }: QRScannerProps
             <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white rounded-tr-xl"></div>
             <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white rounded-bl-xl"></div>
             <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white rounded-br-xl"></div>
+          </div>
+          
+          <div className="absolute bottom-20 left-0 right-0 text-center pointer-events-none">
+            <p className="text-white/80 text-sm bg-black/40 inline-block px-4 py-2 rounded-full backdrop-blur-sm">
+              Escaneja un codi QR o fes una foto al producte
+            </p>
           </div>
         </div>
 
@@ -140,7 +212,9 @@ export default function QRScanner({ onScan, onClose, onCapture }: QRScannerProps
             onClick={handleCapture}
             className="p-1 rounded-full border-4 border-white transition-transform active:scale-95"
           >
-            <div className="w-16 h-16 bg-white rounded-full"></div>
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
+              <Camera className="text-black" size={32} />
+            </div>
           </button>
           
           <div className="w-12"></div> {/* Spacer for balance */}

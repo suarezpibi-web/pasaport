@@ -1,9 +1,11 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Search, Smartphone, Armchair, Shirt, Clock, Trash2, History, X, Sparkles, Loader2 } from 'lucide-react';
+import { Camera, Search, Smartphone, Armchair, Shirt, Clock, Trash2, History, X, Sparkles, Loader2, QrCode } from 'lucide-react';
 import QRScanner from '../components/QRScanner';
 import { products, Product } from '../data/products';
 import { GoogleGenAI } from "@google/genai";
+import QRCode from 'react-qr-code';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ export default function Home() {
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [qrProduct, setQrProduct] = useState<{id: string, name: string} | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('scanHistory');
@@ -163,6 +166,11 @@ export default function Home() {
     setSearchResults([]);
   };
 
+  const handleShowQR = (e: React.MouseEvent, product: {id: string, name: string}) => {
+    e.stopPropagation();
+    setQrProduct(product);
+  };
+
   const formatDate = (timestamp: number) => {
     return new Intl.DateTimeFormat('ca-ES', {
       day: '2-digit',
@@ -274,25 +282,36 @@ export default function Home() {
           ) : (
             <div className="grid grid-cols-1 gap-3">
               {searchResults.map((product) => (
-                <button
+                <div
                   key={product.id}
-                  onClick={() => navigate(`/passport/${product.id}`)}
-                  className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-emerald-100 ring-2 ring-emerald-50 hover:border-emerald-300 hover:shadow-md transition-all text-left group"
+                  className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-emerald-100 ring-2 ring-emerald-50 hover:border-emerald-300 hover:shadow-md transition-all text-left group relative"
                 >
-                  <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
-                    {product.category === 'Electrònica' && <Smartphone size={20} />}
-                    {product.category === 'Mobiliari' && <Armchair size={20} />}
-                    {product.category === 'Roba' && <Shirt size={20} />}
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900 group-hover:text-emerald-700 transition-colors">{product.name}</h4>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <span className="font-semibold text-gray-600">{product.manufacturer}</span>
-                      <span>•</span>
-                      <span className="font-mono">{product.id}</span>
+                  <div 
+                    className="flex-grow flex items-center gap-4 cursor-pointer"
+                    onClick={() => navigate(`/passport/${product.id}`)}
+                  >
+                    <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 flex-shrink-0">
+                      {product.category === 'Electrònica' && <Smartphone size={20} />}
+                      {product.category === 'Mobiliari' && <Armchair size={20} />}
+                      {product.category === 'Roba' && <Shirt size={20} />}
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900 group-hover:text-emerald-700 transition-colors">{product.name}</h4>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span className="font-semibold text-gray-600">{product.manufacturer}</span>
+                        <span>•</span>
+                        <span className="font-mono">{product.id}</span>
+                      </div>
                     </div>
                   </div>
-                </button>
+                  <button
+                    onClick={(e) => handleShowQR(e, product)}
+                    className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors flex-shrink-0"
+                    title="Generar QR"
+                  >
+                    <QrCode size={20} />
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -317,10 +336,10 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-1 gap-3">
             {history.map((item) => (
-              <div key={item.id} className="relative group">
-                <button
+              <div key={item.id} className="relative group bg-white rounded-2xl border border-gray-100 hover:border-emerald-200 hover:shadow-md transition-all">
+                <div
                   onClick={() => navigate(`/passport/${item.id}`)}
-                  className="w-full flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 hover:border-emerald-200 hover:shadow-md transition-all text-left relative overflow-hidden pr-12"
+                  className="w-full flex items-center gap-4 p-4 text-left relative overflow-hidden pr-20 cursor-pointer"
                 >
                   <div className="absolute right-0 top-0 bottom-0 w-1 bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 flex-shrink-0">
@@ -342,14 +361,23 @@ export default function Home() {
                       <span className="font-mono truncate">{item.id}</span>
                     </div>
                   </div>
-                </button>
-                <button
-                  onClick={(e) => deleteHistoryItem(e, item.id)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all z-10"
-                  title="Esborrar"
-                >
-                  <X size={18} />
-                </button>
+                </div>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10">
+                  <button
+                    onClick={(e) => handleShowQR(e, item)}
+                    className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors"
+                    title="Generar QR"
+                  >
+                    <QrCode size={18} />
+                  </button>
+                  <button
+                    onClick={(e) => deleteHistoryItem(e, item.id)}
+                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                    title="Esborrar"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -392,6 +420,43 @@ export default function Home() {
           onClose={() => setShowScanner(false)} 
         />
       )}
+
+      {/* QR Code Modal */}
+      <AnimatePresence>
+        {qrProduct && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setQrProduct(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white p-8 rounded-3xl max-w-sm w-full text-center relative"
+              onClick={e => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setQrProduct(null)}
+                className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+              >
+                <X size={20} />
+              </button>
+              
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{qrProduct.name}</h3>
+              <p className="text-gray-500 text-sm mb-6">Escaneja aquest codi per accedir a la informació del producte</p>
+              
+              <div className="bg-white p-4 rounded-xl border-2 border-emerald-100 inline-block">
+                <QRCode value={qrProduct.id} size={200} />
+              </div>
+              
+              <p className="mt-6 font-mono text-xs text-gray-400">{qrProduct.id}</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
