@@ -187,6 +187,16 @@ export default function QRScanner({ onScan, onClose, onCapture }: QRScannerProps
           )}
           <canvas ref={canvasRef} className="hidden" />
           <canvas ref={scanCanvasRef} className="hidden" />
+
+          {/* Disclaimer Overlay */}
+          <div className="absolute top-24 left-6 right-6 bg-black/80 backdrop-blur-md p-4 rounded-xl border border-yellow-500/50 text-center z-30 shadow-lg pointer-events-none">
+            <p className="text-yellow-400 font-bold mb-1 flex items-center justify-center gap-2">
+              ⚠️ Mode Demo
+            </p>
+            <p className="text-white/90 text-sm">
+              L'escàner QR està desactivat temporalment. Si us plau, utilitza l'entrada manual.
+            </p>
+          </div>
           
           {/* Overlay guide */}
           <div className="absolute inset-0 border-2 border-emerald-500/50 animate-pulse pointer-events-none m-8 rounded-3xl shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
