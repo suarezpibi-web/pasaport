@@ -55,9 +55,15 @@ export default function QRScanner({ onScan, onClose, onCapture }: QRScannerProps
   useEffect(() => {
     if (!stream || !videoRef.current) return;
 
+    const video = videoRef.current;
+    
+    // Ensure video is playing
+    if (video.paused) {
+      video.play().catch(e => console.log("Autoplay prevented:", e));
+    }
+
     const scanQR = () => {
-      if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
-        const video = videoRef.current;
+      if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
         const canvas = scanCanvasRef.current;
         
         if (canvas) {
@@ -90,10 +96,7 @@ export default function QRScanner({ onScan, onClose, onCapture }: QRScannerProps
             if (code) {
               // Found a QR code!
               if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
-              
-              // Play a beep sound (optional, but good feedback)
-              // const audio = new Audio('/beep.mp3'); audio.play().catch(e => {});
-
+              console.log("QR Found:", code.data);
               onScan(code.data);
             }
           }
@@ -101,7 +104,7 @@ export default function QRScanner({ onScan, onClose, onCapture }: QRScannerProps
       }
     };
 
-    scanIntervalRef.current = setInterval(scanQR, 500); // Scan every 500ms
+    scanIntervalRef.current = setInterval(scanQR, 200); // Scan every 200ms for better responsiveness
 
     return () => {
       if (scanIntervalRef.current) {
@@ -186,11 +189,14 @@ export default function QRScanner({ onScan, onClose, onCapture }: QRScannerProps
           <canvas ref={scanCanvasRef} className="hidden" />
           
           {/* Overlay guide */}
-          <div className="absolute inset-0 border-2 border-white/30 pointer-events-none m-8 rounded-3xl">
-            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-white rounded-tl-xl"></div>
-            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white rounded-tr-xl"></div>
-            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white rounded-bl-xl"></div>
-            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white rounded-br-xl"></div>
+          <div className="absolute inset-0 border-2 border-emerald-500/50 animate-pulse pointer-events-none m-8 rounded-3xl shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
+            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-500 rounded-tl-xl"></div>
+            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-500 rounded-tr-xl"></div>
+            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-500 rounded-bl-xl"></div>
+            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-500 rounded-br-xl"></div>
+            
+            {/* Scanning line animation */}
+            <div className="absolute left-0 w-full h-1 bg-emerald-500/80 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-scan"></div>
           </div>
           
           <div className="absolute bottom-20 left-0 right-0 text-center pointer-events-none">

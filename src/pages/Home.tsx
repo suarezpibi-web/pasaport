@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Search, Smartphone, Armchair, Shirt, Clock, Trash2, History, X, Sparkles, Loader2, QrCode } from 'lucide-react';
 import QRScanner from '../components/QRScanner';
@@ -45,12 +45,44 @@ export default function Home() {
     localStorage.setItem('scanHistory', JSON.stringify(newHistory));
   };
 
-  const handleScan = (decodedText: string) => {
+  const handleScan = useCallback(async (decodedText: string) => {
     setShowScanner(false);
     
     if (decodedText.startsWith('image:')) {
       // Handle image capture
       const imageData = decodedText.substring(6); // Remove 'image:' prefix
+      
+      // Try to detect QR code in the captured image as a fallback
+      try {
+        const img = new Image();
+        img.src = imageData;
+        await new Promise((resolve) => { img.onload = resolve; });
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const imageDataObj = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          // Dynamically import jsQR to avoid bundling issues if possible, or just use window.jsQR if available
+          // Since we already import it in QRScanner, we might need to move the logic there or import it here.
+          // Let's import it at the top of the file.
+          const { default: jsQR } = await import('jsqr');
+          const code = jsQR(imageDataObj.data, imageDataObj.width, imageDataObj.height, {
+            inversionAttempts: "dontInvert",
+          });
+          
+          if (code) {
+            console.log("QR detected in captured image:", code.data);
+            navigate(`/passport/${encodeURIComponent(code.data)}`);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to scan QR from image", e);
+      }
+
       const imageId = `img-${Date.now()}`;
       
       try {
@@ -64,7 +96,7 @@ export default function Home() {
       // Handle normal QR/Barcode scan
       navigate(`/passport/${encodeURIComponent(decodedText)}`);
     }
-  };
+  }, [navigate]);
 
   const handleManualSubmit = async (e: FormEvent) => {
     e.preventDefault();
