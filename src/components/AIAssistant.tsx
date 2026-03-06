@@ -19,7 +19,15 @@ export default function AIAssistant({ product }: AIAssistantProps) {
     setResponse(null);
 
     try {
-      const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "AIzaSyAf8j8enDaVa6YJjQhSvhznYoqLAC0X6Wk";
+      const getApiKey = () => {
+        try {
+          return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "AIzaSyAf8j8enDaVa6YJjQhSvhznYoqLAC0X6Wk";
+        } catch (e) {
+          return "AIzaSyAf8j8enDaVa6YJjQhSvhznYoqLAC0X6Wk";
+        }
+      };
+      
+      const apiKey = getApiKey();
       const ai = new GoogleGenAI({ apiKey });
       const model = "gemini-3-flash-preview"; // Using a fast model for quick responses
 

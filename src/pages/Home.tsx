@@ -131,7 +131,15 @@ export default function Home() {
       }
 
       // 2. AI Semantic Search
-      const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "AIzaSyAf8j8enDaVa6YJjQhSvhznYoqLAC0X6Wk";
+      const getApiKey = () => {
+        try {
+          return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "AIzaSyAf8j8enDaVa6YJjQhSvhznYoqLAC0X6Wk";
+        } catch (e) {
+          return "AIzaSyAf8j8enDaVa6YJjQhSvhznYoqLAC0X6Wk";
+        }
+      };
+      
+      const apiKey = getApiKey();
       
       if (!apiKey) {
         console.warn("No API key found, skipping AI search");
@@ -161,13 +169,25 @@ export default function Home() {
         If nothing matches, return an empty array.
       `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
-      });
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json"
+          }
+        });
+      } catch (err) {
+        console.warn("Gemini 3 Flash failed, trying fallback model...", err);
+        response = await ai.models.generateContent({
+          model: "gemini-2.0-flash-exp",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json"
+          }
+        });
+      }
 
       const result = JSON.parse(response.text || "{}");
       const matchedIds = result.matchedIds || [];
@@ -331,8 +351,8 @@ export default function Home() {
                   key={product.id}
                   className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-emerald-100 ring-2 ring-emerald-50 hover:border-emerald-300 hover:shadow-md transition-all text-left group relative"
                 >
-                  <div 
-                    className="flex-grow flex items-center gap-4 cursor-pointer"
+                  <button 
+                    className="flex-grow flex items-center gap-4 cursor-pointer text-left"
                     onClick={() => navigate(`/passport/${product.id}`)}
                   >
                     <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 flex-shrink-0">
@@ -348,7 +368,7 @@ export default function Home() {
                         <span className="font-mono">{product.id}</span>
                       </div>
                     </div>
-                  </div>
+                  </button>
                   <button
                     onClick={(e) => handleShowQR(e, product)}
                     className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors flex-shrink-0"

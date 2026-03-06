@@ -64,7 +64,15 @@ export default function Passport() {
     setIsGenerating(true);
     setGenerationError(false);
     try {
-      const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "AIzaSyAf8j8enDaVa6YJjQhSvhznYoqLAC0X6Wk";
+      const getApiKey = () => {
+        try {
+          return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "AIzaSyAf8j8enDaVa6YJjQhSvhznYoqLAC0X6Wk";
+        } catch (e) {
+          return "AIzaSyAf8j8enDaVa6YJjQhSvhznYoqLAC0X6Wk";
+        }
+      };
+      
+      const apiKey = getApiKey();
       const ai = new GoogleGenAI({ apiKey });
       
       const isUrl = /^(http|https|www\.)/i.test(identifier.trim());
@@ -212,12 +220,22 @@ export default function Passport() {
       } catch (primaryError) {
         console.warn("Primary generation failed, retrying with fallback model...", primaryError);
         // Fallback to Flash model if Pro fails
-        const fallbackResponse = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: contents,
-          config: config
-        });
-        textResponse = fallbackResponse.text || "";
+        try {
+          const fallbackResponse = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: contents,
+            config: config
+          });
+          textResponse = fallbackResponse.text || "";
+        } catch (secondaryError) {
+          console.warn("Secondary generation failed, retrying with experimental model...", secondaryError);
+          const tertiaryResponse = await ai.models.generateContent({
+            model: "gemini-2.0-flash-exp",
+            contents: contents,
+            config: config
+          });
+          textResponse = tertiaryResponse.text || "";
+        }
       }
 
       // Clean up the response to extract JSON
