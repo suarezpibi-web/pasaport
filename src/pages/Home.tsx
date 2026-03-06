@@ -131,12 +131,15 @@ export default function Home() {
       }
 
       // 2. AI Semantic Search
-      const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "AIzaSyAf8j8enDaVa6YJjQhSvhznYoqLAC0X6Wk";
       
       if (!apiKey) {
         console.warn("No API key found, skipping AI search");
         throw new Error("No API key available");
       }
+
+      console.log("Starting AI search with key length:", apiKey.length);
+
 
       const ai = new GoogleGenAI({ apiKey });
       
@@ -182,10 +185,12 @@ export default function Home() {
     } catch (error) {
       console.error("Search failed:", error);
       // Fallback to basic filter if AI fails
+      console.log("Falling back to basic filter");
       const fallbackResults = products.filter(p => 
         (nameQuery && p.name.toLowerCase().includes(nameQuery.toLowerCase())) ||
         (serialQuery && p.id.toLowerCase().includes(serialQuery.toLowerCase()))
       );
+
       
       if (fallbackResults.length > 0) {
         setSearchResults(fallbackResults);
